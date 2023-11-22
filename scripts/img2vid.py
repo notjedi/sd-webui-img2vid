@@ -1,51 +1,70 @@
-# import gradio as gr
-# from modules import script_callbacks
-
-
-# def on_ui_tabs():
-#     with gr.Blocks(analytics_enabled=False) as ui_component:
-#         with gr.Row():
-#             angle = gr.Slider(
-#                 minimum=0.0, maximum=360.0, step=1, value=0, label="Angle"
-#             )
-#             checkbox = gr.Checkbox(False, label="Checkbox")
-#             # TODO: add more UI components (cf. https://gradio.app/docs/#components)
-#         return [(ui_component, "Extension Template", "extension_template_tab")]
-
-
-# script_callbacks.on_ui_tabs(on_ui_tabs)
+import os
+from typing import Literal
 
 import gradio as gr
 from modules import script_callbacks
+from torch.hub import download_url_to_file
+
+
+def download_model(model_type: Literal["svd", "svd_xt"]):
+    """Download SVD model.
+
+    Args:
+        model_type (str): type of model (vanilla or xt)
+    """
+
+    if model_type == "svd":
+        model_url = "https://huggingface.co/stabilityai/stable-video-diffusion-img2vid/resolve/main/svd.safetensors"
+        decoder_url = "https://huggingface.co/stabilityai/stable-video-diffusion-img2vid/resolve/main/svd_image_decoder.safetensors"
+    elif model_type == "svd_xt":
+        model_url = "https://huggingface.co/stabilityai/stable-video-diffusion-img2vid-xt/resolve/main/svd_xt.safetensors"
+        decoder_url = "https://huggingface.co/stabilityai/stable-video-diffusion-img2vid-xt/resolve/main/svd_xt_image_decoder.safetensors"
+    else:
+        raise ValueError(f"invalid model type {model_type}")
+
+    # model_checkpoint = os.path.join(ia_file_manager.models_dir, sam_model_id)
+    model_checkpoint = ""
+    if not os.path.isfile(model_checkpoint):
+        try:
+            download_url_to_file(model_url, model_checkpoint)
+        except Exception as e:
+            print(e)
+
+    decoder_checkpoint = ""
+    if not os.path.isfile(decoder_checkpoint):
+        try:
+            download_url_to_file(decoder_url, decoder_checkpoint)
+        except Exception as e:
+            print(e)
+
+
+def generate_vid(model_type: str, img):
+    if img is None:
+        print("img is None, please choose an image")
+    return None
 
 
 def on_ui_tabs():
     with gr.Blocks(analytics_enabled=False) as ui_component:
-        with gr.Row():
-            checkbox = gr.Checkbox(True, label="Show image")
-            btn = gr.Button("Dummy image").style(full_width=False)
-        with gr.Row():
-            gallery = gr.Gallery(
-                label="Dummy Image",
-                show_label=False,
+        with gr.Row(variant="compact"):
+            with gr.Column():
+                model_type_radio = gr.Radio(
+                    ["svd", "svd-xt"],
+                    value="svd",
+                    label="Model type",
+                    info="Model type to use",
+                )
+                input_img = gr.Image()
+                run_btn = gr.Button(value="Generate", variant="primary")
+            output_vid = gr.Video(interactive=False)
+
+            run_btn.click(
+                generate_vid,
+                inputs=[model_type_radio, input_img],
+                outputs=[output_vid],
             )
 
-        btn.click(
-            dummy_images,
-            inputs=[checkbox],
-            outputs=[gallery],
-        )
-
-        return [(ui_component, "Extension Example", "extension_example_tab")]
-
-
-def dummy_images(checkbox):
-    if checkbox:
-        return [
-            "https://chichi-pui.imgix.net/uploads/post_images/eee3b614-f126-4045-b53d-8bf38b98841d/05aba7f3-208b-4912-92f3-32d1bfc2edc3_1200x.jpeg?auto=format&lossless=0"
-        ]
-    else:
-        return []
+    return [(ui_component, "img2vid", "svd_img2vid_tab")]
 
 
 script_callbacks.on_ui_tabs(on_ui_tabs)
