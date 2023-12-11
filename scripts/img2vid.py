@@ -5,7 +5,7 @@ import gradio as gr
 import torch
 from diffusers import StableVideoDiffusionPipeline
 from diffusers.utils import export_to_video
-from modules import script_callbacks, shared
+from modules import script_callbacks
 from PIL import Image
 
 
@@ -157,19 +157,4 @@ def on_ui_tabs():
     return [(ui_component, "img2vid", "svd_img2vid_tab")]
 
 
-def on_ui_settings():
-    section = ("svd_img2vid_tab", "img2vid")
-    shared.opts.add_option(
-        "svd_models_dir",
-        shared.OptionInfo(
-            default="",
-            label="Stable Video Diffusion models directory; If empty, defaults to [img2vid extension folder]/models",
-            component=gr.Textbox,
-            component_args={"interactive": True},
-            section=section,
-        ),
-    )
-
-
 script_callbacks.on_ui_tabs(on_ui_tabs)
-script_callbacks.on_ui_settings(on_ui_settings)
