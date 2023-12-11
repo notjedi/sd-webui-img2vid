@@ -1,7 +1,7 @@
 import launch
 from importlib_metadata import version
 
-MIN_VERSION = "0.23.1"
+MIN_VERSION = "0.24.0"
 
 
 def install():
