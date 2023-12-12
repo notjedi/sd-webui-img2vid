@@ -48,6 +48,8 @@ def generate_vid(
     decode_chunk_size: int,
     num_frames: int,
     fps: int,
+    num_inference_steps: int,
+    noise_aug_strength: float,
     seed: int,
 ) -> str:
     global svd_pipeline, out_dir
@@ -70,6 +72,8 @@ def generate_vid(
         num_frames=num_frames,
         motion_bucket_id=motion_bucket_id,
         decode_chunk_size=decode_chunk_size,
+        noise_aug_strength=noise_aug_strength,
+        num_inference_steps=num_inference_steps,
         generator=generator,
     ).frames[0]
 
@@ -80,8 +84,6 @@ def generate_vid(
 
 
 def on_ui_tabs():
-    # TODO: num_inference_steps: int = 25,
-    # TODO: noise_aug_strength: int = 0.02, # The amount of noise added to the init image, the higher it is the less the video will look like the init image. Increase it for more motion.
     # TODO: resize_mode
     with gr.Blocks(analytics_enabled=False) as ui_component:
         with gr.Row(variant="compact"):
@@ -139,6 +141,22 @@ def on_ui_tabs():
                         minimum=1,
                         maximum=150,
                     )
+                    num_inference_steps = gr.Slider(
+                        label="Number of inference steps chunk size",
+                        info="The number of denoising steps. More denoising steps usually lead to a higher quality image at the expense of slower inference.",
+                        step=1,
+                        value=25,
+                        minimum=1,
+                        maximum=150,
+                    )
+                    noise_aug_strength = gr.Slider(
+                        label="Noise strength",
+                        info="The amount of noise added to the init image, the higher it is the less the video will look like the init image. Increase it for more motion.",
+                        step=0.01,
+                        value=0.02,
+                        minimum=0.01,
+                        maximum=1.0,
+                    )
 
             output_vid = gr.Video(interactive=False)
             run_btn.click(
@@ -152,6 +170,8 @@ def on_ui_tabs():
                     decode_chunk_size,
                     num_frames,
                     fps,
+                    num_inference_steps,
+                    noise_aug_strength,
                     seed,
                 ],
                 outputs=[output_vid],
