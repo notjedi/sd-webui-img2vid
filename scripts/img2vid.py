@@ -1,5 +1,6 @@
 import os
-from typing import Literal
+import random
+from typing import Literal, Optional
 
 import gradio as gr
 import torch
@@ -7,25 +8,33 @@ from diffusers import StableVideoDiffusionPipeline
 from diffusers.utils import export_to_video
 from PIL import Image
 
+svd_pipeline: Optional["SVDPipeline"] = None
+out_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), "outputs")
+os.makedirs(out_dir, exist_ok=True)
 
-def get_pipeline(model_type: Literal["svd", "svd_xt"]):
-    if model_type == "svd":
-        pipe = StableVideoDiffusionPipeline.from_pretrained(
-            "stabilityai/stable-video-diffusion-img2vid",
-            torch_dtype=torch.float16,
-            variant="fp16",
-        )
-    elif model_type == "svd_xt":
-        pipe = StableVideoDiffusionPipeline.from_pretrained(
-            "stabilityai/stable-video-diffusion-img2vid-xt",
-            torch_dtype=torch.float16,
-            variant="fp16",
-        )
-    else:
-        raise ValueError(f"invalid model type {model_type}")
-    pipe.enable_model_cpu_offload()
-    pipe.to("cuda")
-    return pipe
+
+class SVDPipeline:
+    def __init__(
+        self,
+        model_type: Literal["svd", "svd_xt"],
+    ):
+        self.model_type = model_type
+        if self.model_type == "svd":
+            self.pipe = StableVideoDiffusionPipeline.from_pretrained(
+                "stabilityai/stable-video-diffusion-img2vid",
+                torch_dtype=torch.float16,
+                variant="fp16",
+            )
+        elif self.model_type == "svd_xt":
+            self.pipe = StableVideoDiffusionPipeline.from_pretrained(
+                "stabilityai/stable-video-diffusion-img2vid-xt",
+                torch_dtype=torch.float16,
+                variant="fp16",
+            )
+        else:
+            raise ValueError(f"invalid model type {self.model_type}")
+        self.pipe.enable_model_cpu_offload()
+        self.pipe.to("cuda")
 
 
 def generate_vid(
@@ -38,7 +47,8 @@ def generate_vid(
     num_frames: int,
     fps: int,
     seed: int,
-):
+) -> str:
+    global svd_pipeline, out_dir
     # num_inference_steps: int = 25,
     # noise_aug_strength: int = 0.02,
     # num_videos_per_prompt: Optional[int] = 1,
@@ -47,16 +57,17 @@ def generate_vid(
     # resize_mode
 
     if img is None:
-        print("img is None, please choose an image")
-        return None
-
-    pipe = get_pipeline(model_type)
+        raise ValueError("img cannot be None")
     img = img.resize((width, height))
-    # TODO: clamp decode_chunk_size
 
-    # TODO: handle seed here
+    if seed < 0:
+        seed = random.randint(0, 1_000_000_000_000)
+    if svd_pipeline is None or svd_pipeline.model_type != model_type:
+        del svd_pipeline
+        svd_pipeline = SVDPipeline(model_type)
+
     generator = torch.manual_seed(seed)
-    frames = pipe(
+    frames = svd_pipeline.pipe(
         img,
         fps=fps,
         width=width,
@@ -67,19 +78,13 @@ def generate_vid(
         generator=generator,
     ).frames[0]
 
-    out_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), "outputs")
-    os.makedirs(out_dir, exist_ok=True)
     vid_path = os.path.join(out_dir, "generated.mp4")
-    export_to_video(frames, vid_path, fps=fps)
+    export_to_video(frames, vid_path, fps)
     return vid_path
 
 
 def on_ui_tabs():
-    # TODO: have a text box for seed
-    # TODO: have a slider for width and height
-    # TODO: have a text box for decode_chunk_size
     # TODO: have a resize checkbox to resize the image
-
     with gr.Blocks(analytics_enabled=False) as ui_component:
         with gr.Row(variant="compact"):
             with gr.Column():
