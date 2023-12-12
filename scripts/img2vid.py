@@ -41,7 +41,7 @@ class SVDPipeline:
         self.pipe.to("cuda")
 
 
-def resize_image(resize_mode, im, width, height):
+def resize_image(resize_mode: int, im: Image.Image, width: int, height: int):
     """
     Resizes an image with the specified resize_mode, width, and height.
 
@@ -122,6 +122,7 @@ def resize_image(resize_mode, im, width, height):
 def generate_vid(
     img: Image.Image,
     model_type: Literal["svd", "svd_xt"],
+    resize_mode: int,
     width: int,
     height: int,
     motion_bucket_id: int,
@@ -135,7 +136,7 @@ def generate_vid(
     global svd_pipeline, out_dir
     if img is None:
         raise ValueError("img cannot be None")
-    img = img.resize((width, height))
+    img = resize_image(resize_mode, img, width, height)
 
     if seed < 0:
         seed = random.randint(0, MAX_64_BIT_INT)
@@ -174,7 +175,6 @@ def on_ui_tabs():
                     ["svd", "svd-xt"],
                     value="svd",
                     label="Model type",
-                    info="Model type to use",
                 )
                 with gr.Row():
                     resize_mode = gr.Radio(
@@ -183,7 +183,6 @@ def on_ui_tabs():
                             "Just resize",
                             "Crop and resize",
                             "Resize and fill",
-                            "Just resize (latent upscale)",
                         ],
                         type="index",
                         value="Just resize",
@@ -256,6 +255,7 @@ def on_ui_tabs():
                 inputs=[
                     input_img,
                     model_type_radio,
+                    resize_mode,
                     width,
                     height,
                     motion_bucket_id,
