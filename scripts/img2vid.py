@@ -5,7 +5,6 @@ import gradio as gr
 import torch
 from diffusers import StableVideoDiffusionPipeline
 from diffusers.utils import export_to_video
-from modules import script_callbacks
 from PIL import Image
 
 
@@ -55,6 +54,7 @@ def generate_vid(
     img = img.resize((width, height))
     # TODO: clamp decode_chunk_size
 
+    # TODO: handle seed here
     generator = torch.manual_seed(seed)
     frames = pipe(
         img,
@@ -68,6 +68,7 @@ def generate_vid(
     ).frames[0]
 
     out_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), "outputs")
+    os.makedirs(out_dir, exist_ok=True)
     vid_path = os.path.join(out_dir, "generated.mp4")
     export_to_video(frames, vid_path, fps=fps)
     return vid_path
@@ -157,4 +158,10 @@ def on_ui_tabs():
     return [(ui_component, "img2vid", "svd_img2vid_tab")]
 
 
-script_callbacks.on_ui_tabs(on_ui_tabs)
+if __name__ == "__main__":
+    ((demo, _, _),) = on_ui_tabs()
+    demo.launch()
+else:
+    from modules import script_callbacks
+
+    script_callbacks.on_ui_tabs(on_ui_tabs)
