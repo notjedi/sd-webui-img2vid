@@ -1,5 +1,6 @@
 import os
 import random
+import time
 from typing import Literal, Optional
 
 import gradio as gr
@@ -8,6 +9,7 @@ from diffusers import StableVideoDiffusionPipeline
 from diffusers.utils import export_to_video
 from PIL import Image
 
+MAX_64_BIT_INT = 2**63 - 1
 svd_pipeline: Optional["SVDPipeline"] = None
 out_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), "outputs")
 os.makedirs(out_dir, exist_ok=True)
@@ -49,19 +51,12 @@ def generate_vid(
     seed: int,
 ) -> str:
     global svd_pipeline, out_dir
-    # num_inference_steps: int = 25,
-    # noise_aug_strength: int = 0.02,
-    # num_videos_per_prompt: Optional[int] = 1,
-    # min_guidance_scale: float = 1.0,
-    # max_guidance_scale: float = 3.0,
-    # resize_mode
-
     if img is None:
         raise ValueError("img cannot be None")
     img = img.resize((width, height))
 
     if seed < 0:
-        seed = random.randint(0, 1_000_000_000_000)
+        seed = random.randint(0, MAX_64_BIT_INT)
     if svd_pipeline is None or svd_pipeline.model_type != model_type:
         del svd_pipeline
         svd_pipeline = SVDPipeline(model_type)
@@ -78,13 +73,16 @@ def generate_vid(
         generator=generator,
     ).frames[0]
 
-    vid_path = os.path.join(out_dir, "generated.mp4")
+    file_name = int(time.time())
+    vid_path = os.path.join(out_dir, f"{file_name}.mp4")
     export_to_video(frames, vid_path, fps)
     return vid_path
 
 
 def on_ui_tabs():
-    # TODO: have a resize checkbox to resize the image
+    # TODO: num_inference_steps: int = 25,
+    # TODO: noise_aug_strength: int = 0.02, # The amount of noise added to the init image, the higher it is the less the video will look like the init image. Increase it for more motion.
+    # TODO: resize_mode
     with gr.Blocks(analytics_enabled=False) as ui_component:
         with gr.Row(variant="compact"):
             with gr.Column():
@@ -98,10 +96,10 @@ def on_ui_tabs():
                 )
                 with gr.Row():
                     width = gr.Slider(
-                        label="Width", minimum=64, maximum=1024, step=32, value=512
+                        label="Width", minimum=64, maximum=1024, step=64, value=1024
                     )
                     height = gr.Slider(
-                        label="Height", minimum=64, maximum=1024, step=32, value=288
+                        label="Height", minimum=64, maximum=1024, step=64, value=576
                     )
 
                 with gr.Row():
@@ -122,7 +120,6 @@ def on_ui_tabs():
                 seed = gr.Number(
                     label="Seed",
                     value=-1,
-                    min_width=100,
                     precision=0,
                 )
                 with gr.Accordion("Advanced options", open=False):
