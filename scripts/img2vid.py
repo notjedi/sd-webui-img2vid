@@ -165,14 +165,13 @@ def generate_vid(
 
 
 def on_ui_tabs():
-    # TODO: resize_mode
     with gr.Blocks(analytics_enabled=False) as ui_component:
         with gr.Row(variant="compact"):
             with gr.Column():
                 input_img = gr.Image(type="pil")
                 run_btn = gr.Button(value="Generate", variant="primary")
                 model_type_radio = gr.Radio(
-                    ["svd", "svd-xt"],
+                    ["svd", "svd_xt"],
                     value="svd",
                     label="Model type",
                 )
